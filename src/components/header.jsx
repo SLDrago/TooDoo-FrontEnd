@@ -1,9 +1,47 @@
 import { useState } from "react";
 import todologo from "../assets/logo-big.png";
 import dummyprofile from "../assets/145857007_307ce493-b254-4b2d-8ba4-d12c080d6651.svg";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import axios from "axios";
+import { decrypt } from "../utils/cryptoUtils";
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const userName = Cookies.get("name");
+  const token = Cookies.get("token");
+  const Navigate = useNavigate();
+
+  const logOutHandler = () => {
+    try {
+      toast.promise(
+        axios.post(
+          `${apiUrl}/api/logout`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${decrypt(token)}`,
+            },
+          }
+        ),
+        {
+          pending: "Logging out...",
+          success: "Logged out successfully",
+          error: "Logout failed",
+        }
+      );
+      Cookies.remove("name");
+      Cookies.remove("token");
+      Navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Logout failed");
+    }
+  };
+
   return (
     <header className="bg-white text-black py-2 px-4 shadow-md flex items-center justify-between">
       <div className="flex items-center justify-center gap-x-1 text-2xl sm:text-3xl font-semibold font-sans py-2 px-4">
@@ -12,7 +50,7 @@ const Header = () => {
       </div>
       <div className="flex items-center gap-4">
         <div className="hidden sm:flex items-center gap-2 font-bold text-xl sm:text-2xl">
-          Welcome, Guest
+          Welcome, {userName ? userName.split(" ")[0] : ""}!
         </div>
         <div className="relative">
           <img
@@ -24,7 +62,10 @@ const Header = () => {
           {isOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-lg border border-gray-200 z-10">
               <ul className="py-2 text-gray-700 text-sm">
-                <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-500">
+                <li
+                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-red-500"
+                  onClick={logOutHandler}
+                >
                   Logout
                 </li>
               </ul>
