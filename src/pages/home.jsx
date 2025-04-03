@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Plus,
   Search,
@@ -9,11 +9,115 @@ import {
 import Card from "../components/card";
 import TaskModal from "../components/taskModel";
 import Header from "../components/header";
+import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { CSVLink } from "react-csv";
+import { decrypt } from "../utils/cryptoUtils";
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const Home = () => {
   const [isModelOpen, setIsModelOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("todo");
+  const [tasks, setTasks] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const token = Cookies.get("token");
+  const navigate = useNavigate();
+
+  const csvLinkRef = useRef(null);
+
+  const handleCSVExport = () => {
+    if (csvLinkRef.current) {
+      csvLinkRef.current.link.click();
+    }
+  };
+
+  const handlePDFExport = () => {
+    // Implement PDF export logic here
+  };
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/get-categories`, {
+        headers: {
+          Authorization: `Bearer ${decrypt(token)}`,
+        },
+      });
+      setCategories(response.data);
+      localStorage.setItem("categories", JSON.stringify(response.data));
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  }, [token]);
+
+  const loadTasks = useCallback(async () => {
+    try {
+      const response = await axios.get(`${apiUrl}/api/get-tasks`, {
+        headers: {
+          Authorization: `Bearer ${decrypt(token)}`,
+        },
+      });
+      setTasks(response.data);
+      setFilteredTasks(response.data); // Initialize filtered tasks
+      localStorage.setItem("tasks", JSON.stringify(response.data));
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+    }
+  }, [token]);
+
+  const filterTasks = useCallback(() => {
+    let filtered = [...tasks];
+
+    // Filter by priority
+    if (priorityFilter !== "all") {
+      filtered = filtered.filter((task) => task.priority === priorityFilter);
+    }
+
+    // Filter by category
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(
+        (task) => task.category_id === parseInt(categoryFilter)
+      );
+    }
+
+    // Filter by search query
+    if (searchQuery.trim() !== "") {
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.task.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredTasks(filtered);
+  }, [tasks, priorityFilter, categoryFilter, searchQuery]);
+
+  useEffect(() => {
+    if (!token) {
+      navigate("/login");
+    }
+    loadCategories();
+    loadTasks();
+  }, [token, navigate, loadCategories, loadTasks]);
+
+  useEffect(() => {
+    filterTasks();
+  }, [tasks, priorityFilter, categoryFilter, searchQuery, filterTasks]);
+
+  useEffect(() => {
+    const storedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    setTasks(storedTasks);
+  }, []);
+
+  const handleTaskChange = (updatedTasks) => {
+    setTasks(updatedTasks); // Update the state
+  };
 
   return (
     <>
@@ -25,34 +129,28 @@ const Home = () => {
           </div>
 
           <div className="hidden sm:flex p-2 gap-3 justify-end items-center">
-            <button className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer">
+            <button
+              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
+              onClick={handleCSVExport}
+            >
               <FileSpreadsheet className="w-5 h-5" />
               Export CSV
             </button>
-            {"|"}
-            <button className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer">
+            <button
+              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
+              onClick={handlePDFExport}
+            >
               <Download className="w-5 h-5" />
               Export PDF
             </button>
           </div>
-          <div className="sm:hidden flex">
-            <button
-              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
-              onClick={() => setExportMenuOpen(!exportMenuOpen)}
-            >
-              <ChevronDown className="w-5 h-5" /> Export
-            </button>
-          </div>
-          {exportMenuOpen && (
-            <div className="absolute right-5 mt-10 bg-white shadow-md rounded-md p-2 w-32">
-              <button className="flex w-full items-center gap-2 p-2 hover:bg-gray-100">
-                <FileSpreadsheet className="w-5 h-5" /> CSV
-              </button>
-              <button className="flex w-full items-center gap-2 p-2 hover:bg-gray-100">
-                <Download className="w-5 h-5" /> PDF
-              </button>
-            </div>
-          )}
+          <CSVLink
+            data={tasks}
+            filename={"todo_tasks.csv"}
+            className="hidden"
+            target="_blank"
+            ref={csvLinkRef}
+          ></CSVLink>
         </div>
         <div className="bg-white py-4 rounded-lg shadow-md mx-5 my-4">
           <div className="flex items-center justify-between px-6 gap-4 mb-4">
@@ -71,7 +169,10 @@ const Home = () => {
                     activeTab === "todo" ? "bg-blue-600" : "bg-gray-500"
                   } text-white text-sm px-2 py-1 rounded-lg`}
                 >
-                  108
+                  {
+                    filteredTasks.filter((task) => task.is_complete === 0)
+                      .length
+                  }
                 </span>
               </button>
               <button
@@ -88,7 +189,10 @@ const Home = () => {
                     activeTab === "completed" ? "bg-blue-600" : "bg-gray-500"
                   } text-white text-sm px-2 py-1 rounded-lg`}
                 >
-                  3
+                  {
+                    filteredTasks.filter((task) => task.is_complete === 1)
+                      .length
+                  }
                 </span>
               </button>
             </div>
@@ -103,6 +207,7 @@ const Home = () => {
           <TaskModal
             isOpen={isModelOpen}
             onClose={() => setIsModelOpen(false)}
+            onTaskChange={handleTaskChange}
           />
 
           <div className="flex flex-col sm:flex-row justify-between items-center px-6 gap-4">
@@ -112,18 +217,28 @@ const Home = () => {
                   <span className="text-gray-500 text-sm sm:mb-0 mb-1">
                     Category:
                   </span>
-                  <select className="border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full sm:w-auto">
+                  <select
+                    className="border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full sm:w-auto"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
                     <option value="all">All</option>
-                    <option value="work">Work</option>
-                    <option value="home">Home</option>
-                    <option value="school">School</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
                   <span className="text-gray-500 text-sm sm:mb-0 mb-1">
                     Priority:
                   </span>
-                  <select className="border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full sm:w-auto">
+                  <select
+                    className="border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none w-full sm:w-auto"
+                    value={priorityFilter}
+                    onChange={(e) => setPriorityFilter(e.target.value)}
+                  >
                     <option value="all">All</option>
                     <option value="high">High</option>
                     <option value="medium">Medium</option>
@@ -137,6 +252,8 @@ const Home = () => {
                 type="text"
                 placeholder="Search..."
                 className="w-full md:w-64 border border-gray-300 p-2 pr-10 rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <Search className="absolute inset-y-0 right-3 my-auto w-5 h-5 text-gray-500" />
             </div>
@@ -144,65 +261,41 @@ const Home = () => {
         </div>
         {activeTab === "todo" ? (
           <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            <Card
-              title={"Task 1"}
-              description="Complete the project Archive"
-              priority="High"
-              isCompleted={false}
-              category={"👜 Work"}
-              dueDate={"2023-10-15"}
-            />
-            <Card
-              title={"Task 2"}
-              description="Run 1000m in 5 days"
-              priority="Low"
-              isCompleted={false}
-              category={"🏃 Excersise"}
-              dueDate={"2025-04-07"}
-            />
-            <Card
-              title={"Task 2"}
-              description="Run 1000m in 5 days"
-              priority="Low"
-              isCompleted={false}
-              category={"🏃 Excersise"}
-              dueDate={"2025-04-07"}
-            />
-            <Card
-              title={"Task 2"}
-              description="Run 1000m in 5 days"
-              priority="Low"
-              isCompleted={false}
-              category={"🏃 Excersise"}
-              dueDate={"2025-04-07"}
-            />
-            <Card
-              title={"Task 2"}
-              description="Run 1000m in 5 days"
-              priority="Low"
-              isCompleted={false}
-              category={"🏃 Excersise"}
-              dueDate={"2025-04-07"}
-            />
+            {filteredTasks
+              .filter((task) => task.is_complete === 0)
+              .map((task) => (
+                <Card
+                  key={task.id}
+                  title={task.title}
+                  description={task.task}
+                  priority={task.priority}
+                  isCompleted={task.is_complete === 1}
+                  category={
+                    categories.find((cat) => cat.id === task.category_id)
+                      ?.name || "Unknown"
+                  }
+                  dueDate={task.due_date || "Not Set"}
+                />
+              ))}
           </div>
         ) : (
           <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            <Card
-              title={"Task 0"}
-              description="Get Vegitables from Keels"
-              priority="Medium"
-              isCompleted={true}
-              category={"🏡 Home"}
-              dueDate={"Not Set"}
-            />
-            <Card
-              title={"Task 0"}
-              description="Get Vegitables from Keels"
-              priority="Medium"
-              isCompleted={true}
-              category={"🏡 Home"}
-              dueDate={"Not Set"}
-            />
+            {filteredTasks
+              .filter((task) => task.is_complete === 1)
+              .map((task) => (
+                <Card
+                  key={task.id}
+                  title={task.title}
+                  description={task.task}
+                  priority={task.priority}
+                  isCompleted={task.is_complete === 1}
+                  category={
+                    categories.find((cat) => cat.id === task.category_id)
+                      ?.name || "Unknown"
+                  }
+                  dueDate={task.due_date || "Not Set"}
+                />
+              ))}
           </div>
         )}
       </div>
