@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Plus,
-  Search,
-  Download,
-  FileSpreadsheet,
-  ChevronDown,
-} from "lucide-react";
+import { Plus, Search, Download, FileSpreadsheet } from "lucide-react";
 import Card from "../components/card";
 import TaskModal from "../components/taskModel";
 import Header from "../components/header";
@@ -14,12 +8,16 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { CSVLink } from "react-csv";
 import { decrypt } from "../utils/cryptoUtils";
+import { usePDF } from "../context/PDFContext";
+import html2canvas from "html2canvas-pro";
+import { jsPDF } from "jspdf";
+import { createRoot } from "react-dom/client";
+import PDFLayout from "../layout/pdfLayout";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
 const Home = () => {
   const [isModelOpen, setIsModelOpen] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("todo");
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
@@ -29,6 +27,7 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const token = Cookies.get("token");
   const navigate = useNavigate();
+  const { componentRef } = usePDF();
 
   const csvLinkRef = useRef(null);
 
@@ -38,8 +37,35 @@ const Home = () => {
     }
   };
 
-  const handlePDFExport = () => {
-    // Implement PDF export logic here
+  const handleExportPDF = () => {
+    const pdf = new jsPDF();
+    const input = document.getElementById("task-list");
+
+    html2canvas(input, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 190;
+      const pageHeight = pdf.internal.pageSize.height;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save("tasks.pdf");
+    });
+  };
+
+  const handleTaskChange = () => {
+    loadTasks();
   };
 
   const loadCategories = useCallback(async () => {
@@ -64,8 +90,8 @@ const Home = () => {
         },
       });
       setTasks(response.data);
-      setFilteredTasks(response.data); // Initialize filtered tasks
-      localStorage.setItem("tasks", JSON.stringify(response.data));
+      setFilteredTasks(response.data);
+      // localStorage.setItem("tasks", JSON.stringify(response.data));
     } catch (error) {
       console.error("Error fetching tasks:", error);
     }
@@ -74,19 +100,16 @@ const Home = () => {
   const filterTasks = useCallback(() => {
     let filtered = [...tasks];
 
-    // Filter by priority
     if (priorityFilter !== "all") {
       filtered = filtered.filter((task) => task.priority === priorityFilter);
     }
 
-    // Filter by category
     if (categoryFilter !== "all") {
       filtered = filtered.filter(
         (task) => task.category_id === parseInt(categoryFilter)
       );
     }
 
-    // Filter by search query
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter(
         (task) =>
@@ -110,18 +133,9 @@ const Home = () => {
     filterTasks();
   }, [tasks, priorityFilter, categoryFilter, searchQuery, filterTasks]);
 
-  useEffect(() => {
-    const storedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    setTasks(storedTasks);
-  }, []);
-
-  const handleTaskChange = (updatedTasks) => {
-    setTasks(updatedTasks); // Update the state
-  };
-
   return (
     <>
-      <div className="h-screen bg-zinc-50">
+      <div className="h-full bg-zinc-50">
         <Header />
         <div className="justify-between flex mx-6 my-4">
           <div className="text-2xl font-bold font-sans flex items-center text-center">
@@ -138,7 +152,7 @@ const Home = () => {
             </button>
             <button
               className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
-              onClick={handlePDFExport}
+              onClick={handleExportPDF}
             >
               <Download className="w-5 h-5" />
               Export PDF
@@ -259,45 +273,54 @@ const Home = () => {
             </div>
           </div>
         </div>
-        {activeTab === "todo" ? (
-          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            {filteredTasks
-              .filter((task) => task.is_complete === 0)
-              .map((task) => (
-                <Card
-                  key={task.id}
-                  title={task.title}
-                  description={task.task}
-                  priority={task.priority}
-                  isCompleted={task.is_complete === 1}
-                  category={
-                    categories.find((cat) => cat.id === task.category_id)
-                      ?.name || "Unknown"
-                  }
-                  dueDate={task.due_date || "Not Set"}
-                />
-              ))}
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-            {filteredTasks
-              .filter((task) => task.is_complete === 1)
-              .map((task) => (
-                <Card
-                  key={task.id}
-                  title={task.title}
-                  description={task.task}
-                  priority={task.priority}
-                  isCompleted={task.is_complete === 1}
-                  category={
-                    categories.find((cat) => cat.id === task.category_id)
-                      ?.name || "Unknown"
-                  }
-                  dueDate={task.due_date || "Not Set"}
-                />
-              ))}
-          </div>
-        )}
+        <div className="mb-4" id="task-list">
+          {activeTab === "todo" ? (
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+              {filteredTasks
+                .filter((task) => task.is_complete === 0)
+                .map((task) => (
+                  <Card
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    description={task.task}
+                    priority={task.priority}
+                    isCompleted={task.is_complete === 1}
+                    category={
+                      categories.find((cat) => cat.id === task.category_id)
+                        ?.name || "Unknown"
+                    }
+                    dueDate={task.due_date || "Not Set"}
+                    onTaskChange={handleTaskChange}
+                  />
+                ))}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+              {filteredTasks
+                .filter((task) => task.is_complete === 1)
+                .map((task) => (
+                  <Card
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    description={task.task}
+                    priority={task.priority}
+                    isCompleted={task.is_complete === 1}
+                    category={
+                      categories.find((cat) => cat.id === task.category_id)
+                        ?.name || "Unknown"
+                    }
+                    dueDate={task.due_date || "Not Set"}
+                    onTaskChange={handleTaskChange}
+                  />
+                ))}
+            </div>
+          )}
+        </div>
+        <div className="m-5 flex justify-center items-center font-light text-gray-600">
+          2025 All rights reserved.
+        </div>
       </div>
     </>
   );

@@ -126,34 +126,30 @@ const Register = () => {
             <form className="w-full" onSubmit={handleRegister}>
               <div className="mb-4">
                 <input
-                  type="name"
+                  type="text"
                   id="name"
                   name="name"
                   placeholder="Enter your name"
-                  required
                   className="w-full border-2 border-gray-300 rounded-md px-2 py-2"
                   value={name}
                   onChange={(e) => {
                     const value = e.target.value;
                     setName(value);
-                    setNameError(validateName(value));
                   }}
                 />
                 {nameError && <ValidateError error={nameError} />}
               </div>
               <div className="mb-4">
                 <input
-                  type="email"
+                  type="text"
                   id="email"
                   name="email"
                   placeholder="Enter your email"
-                  required
                   className="w-full border-2 border-gray-300 rounded-md px-2 py-2"
                   value={email}
                   onChange={(e) => {
                     const value = e.target.value;
                     setEmail(value);
-                    setEmailError(validateEmail(value));
                   }}
                 />
                 {emailError && <ValidateError error={emailError} />}
@@ -165,13 +161,11 @@ const Register = () => {
                     id="password"
                     name="password"
                     placeholder="Enter your password"
-                    required
                     className="w-full border-2 border-gray-300 rounded-md px-2 py-2"
                     value={password}
                     onChange={(e) => {
                       const value = e.target.value;
                       setPassword(value);
-                      setPasswordError(validatePassword(value));
                     }}
                   />
                   <button
@@ -195,15 +189,11 @@ const Register = () => {
                     id="confpassword"
                     name="confpassword"
                     placeholder="Confirm your password"
-                    required
                     className="w-full border-2 border-gray-300 rounded-md px-2 py-2"
                     value={confirmPassword}
                     onChange={(e) => {
                       const value = e.target.value;
                       setConfirmPassword(value);
-                      setPasswordConfirmError(
-                        validateConfirmPassword(password, value)
-                      );
                     }}
                   />
                   <button

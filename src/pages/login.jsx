@@ -116,7 +116,6 @@ const Login = () => {
                   onChange={(e) => {
                     const value = e.target.value;
                     setEmail(value);
-                    setEmailError(validateEmail(value)); // Validate in real-time
                   }}
                 />
                 {emailError && <ValidateError error={emailError} />}
@@ -136,7 +135,6 @@ const Login = () => {
                     onChange={(e) => {
                       const value = e.target.value;
                       setPassword(value);
-                      setPasswordError(validatePassword(value)); // Validate in real-time
                     }}
                   />
                   <button

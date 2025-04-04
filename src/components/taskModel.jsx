@@ -2,45 +2,80 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
 import axios from "axios";
+import Cookies from "js-cookie";
+import { decrypt } from "../utils/cryptoUtils";
+import loadTasks from "../pages/home";
 
-const TaskModal = ({ isOpen, onClose, taskId }) => {
-  const [taskData, setTaskData] = useState({
+const apiUrl = import.meta.env.VITE_API_URL;
+
+const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
+  const categories = JSON.parse(localStorage.getItem("categories")) || [];
+
+  const initialTaskData = {
+    id: null,
     title: "",
-    category: "all",
-    priority: "medium",
-    description: "",
-    dueDate: "",
-  });
-  const [categories, setCategories] = useState([
-    "all",
-    "work",
-    "home",
-    "school",
-  ]);
-  const [newCategory, setNewCategory] = useState("");
+    task: "",
+    category_id: "",
+    is_complete: false,
+    priority: "low",
+    due_date: "",
+  };
+
+  const [taskData, setTaskData] = useState(initialTaskData);
 
   useEffect(() => {
-    if (taskId) {
-      const fetchTask = async () => {
-        try {
-          const response = await axios.get(`/api/tasks/${taskId}`);
-          setTaskData(response.data);
-        } catch (error) {
-          console.error("Failed to load task!", error);
-        }
-      };
-      fetchTask();
+    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    const task = tasks.find((task) => task.id === taskId);
+    if (task) {
+      setTaskData({
+        id: task.id,
+        title: task.title,
+        task: task.task,
+        category_id: task.category_id,
+        is_complete: task.is_complete,
+        priority: task.priority,
+        due_date: task.due_date,
+      });
+    } else {
+      setTaskData(initialTaskData);
     }
   }, [taskId]);
 
+  const handleClose = () => {
+    setTaskData(initialTaskData);
+    onClose();
+  };
+
   const handleSave = async () => {
     try {
-      await toast.promise(axios.post("/api/tasks", taskData), {
-        pending: "Saving task...",
-        success: "Task saved successfully!",
-        error: "Something went wrong!",
-      });
-      onClose();
+      if (!taskData.title || !taskData.task || !taskData.category_id) {
+        toast.error("Please fill in all required fields.");
+        return;
+      }
+
+      const response = await toast.promise(
+        axios.post(`${apiUrl}/api/store-task`, taskData, {
+          headers: {
+            Authorization: `Bearer ${decrypt(Cookies.get("token"))}`,
+          },
+        }),
+        {
+          pending: "Saving task...",
+          success: "Task saved successfully!",
+          error: "Something went wrong!",
+        }
+      );
+
+      // const newTask = { ...taskData, id: response.data.task.id };
+      // const latestTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      // const updatedTasks = [...latestTasks, newTask];
+
+      // localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+      if (onTaskChange) {
+        onTaskChange();
+      }
+
+      handleClose();
     } catch (error) {
       console.error("Error saving task!", error);
     }
@@ -48,22 +83,37 @@ const TaskModal = ({ isOpen, onClose, taskId }) => {
 
   const handleUpdate = async () => {
     try {
-      await toast.promise(axios.put(`/api/tasks/${taskId}`, taskData), {
-        pending: "Updating task...",
-        success: "Task updated successfully!",
-        error: "Something went wrong!",
-      });
-      onClose();
+      if (!taskData.title || !taskData.task || !taskData.category_id) {
+        toast.error("Please fill in all required fields.");
+        return;
+      }
+
+      await toast.promise(
+        axios.post(`${apiUrl}/api/update-task`, taskData, {
+          headers: {
+            Authorization: `Bearer ${decrypt(Cookies.get("token"))}`,
+          },
+        }),
+        {
+          pending: "Updating task...",
+          success: "Task updated successfully!",
+          error: "Something went wrong!",
+        }
+      );
+
+      // const latestTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      // const updatedTasks = latestTasks.map((t) =>
+      //   t.id === taskId ? { ...taskData, id: taskId } : t
+      // );
+
+      // localStorage.setItem("tasks", JSON.stringify(updatedTasks));
+      if (onTaskChange) {
+        onTaskChange();
+      }
+
+      handleClose();
     } catch (error) {
       console.error("Error updating task!", error);
-    }
-  };
-
-  const addCategory = () => {
-    if (newCategory && !categories.includes(newCategory)) {
-      setCategories([...categories, newCategory]);
-      setNewCategory("");
-      toast.success("Category added successfully!");
     }
   };
 
@@ -71,13 +121,13 @@ const TaskModal = ({ isOpen, onClose, taskId }) => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-10 px-2">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96 sm:w-2/5">
         <div className="w-full flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">
             {taskId ? "Edit Task" : "Add New Task"}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 rounded-full cursor-pointer hover:shadow-sm"
           >
             <X className="w-6 h-6 text-red-500" />
@@ -89,44 +139,41 @@ const TaskModal = ({ isOpen, onClose, taskId }) => {
           <input
             type="text"
             value={taskData.title}
-            onChange={(e) =>
-              setTaskData({ ...taskData, title: e.target.value })
-            }
+            onChange={(e) => {
+              setTaskData({ ...taskData, title: e.target.value });
+            }}
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
             placeholder="Enter task title"
           />
         </div>
 
         <div className="mb-4">
+          <label className="block text-gray-600 text-sm">Task:</label>
+          <textarea
+            value={taskData.task}
+            onChange={(e) => setTaskData({ ...taskData, task: e.target.value })}
+            className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+            rows="4"
+            placeholder="Enter task description"
+          ></textarea>
+        </div>
+
+        <div className="mb-4">
           <label className="block text-gray-600 text-sm">Category:</label>
           <select
-            value={taskData.category}
+            value={taskData.category_id}
             onChange={(e) =>
-              setTaskData({ ...taskData, category: e.target.value })
+              setTaskData({ ...taskData, category_id: e.target.value })
             }
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
           >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            <option value="">Select a category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
               </option>
             ))}
           </select>
-          <div className="flex mt-2">
-            <input
-              type="text"
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-              placeholder="New category"
-            />
-            <button
-              onClick={addCategory}
-              className="ml-2 bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600"
-            >
-              Add
-            </button>
-          </div>
         </div>
 
         <div className="mb-4">
@@ -138,32 +185,19 @@ const TaskModal = ({ isOpen, onClose, taskId }) => {
             }
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
           >
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
             <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
           </select>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-gray-600 text-sm">Task:</label>
-          <textarea
-            value={taskData.description}
-            onChange={(e) =>
-              setTaskData({ ...taskData, description: e.target.value })
-            }
-            className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-            rows="4"
-            placeholder="Enter task description"
-          ></textarea>
         </div>
 
         <div className="mb-4">
           <label className="block text-gray-600 text-sm">Set Due Date:</label>
           <input
             type="date"
-            value={taskData.dueDate}
+            value={taskData.due_date}
             onChange={(e) =>
-              setTaskData({ ...taskData, dueDate: e.target.value })
+              setTaskData({ ...taskData, due_date: e.target.value })
             }
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
             min={new Date().toISOString().split("T")[0]}
