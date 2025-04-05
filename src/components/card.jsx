@@ -5,6 +5,7 @@ import axios from "axios";
 import { decrypt } from "../utils/cryptoUtils";
 import TaskModal from "./taskModel";
 import Cookies from "js-cookie";
+import DeleteConfirmation from "./deleteConfirmation";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -21,6 +22,7 @@ const Card = ({
   const [isChecked, setIsChecked] = useState(isCompleted);
   const [isOpen, setIsOpen] = useState(false);
   const [isModelOpen, setIsModelOpen] = useState(false);
+  const [isDeleteModelOpen, setIsDeleteModelOpen] = useState(false);
 
   const token = decrypt(Cookies.get("token"));
 
@@ -123,7 +125,7 @@ const Card = ({
                 </li>
                 <li
                   className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center text-red-500"
-                  onClick={handleDeleteTask}
+                  onClick={() => setIsDeleteModelOpen(true)}
                 >
                   <Cog className="w-4 h-4 mr-2" />
                   Delete
@@ -180,6 +182,15 @@ const Card = ({
           </button>
         </div>
       </div>
+      <DeleteConfirmation
+        key={id}
+        isOpen={isDeleteModelOpen}
+        onClose={() => {
+          setIsDeleteModelOpen(false);
+          setIsOpen(false);
+        }}
+        confirmation={handleDeleteTask}
+      />
     </div>
   );
 };
