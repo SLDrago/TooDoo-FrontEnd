@@ -4,7 +4,6 @@ import { X } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { decrypt } from "../utils/cryptoUtils";
-import loadTasks from "../pages/home";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -53,7 +52,7 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
         return;
       }
 
-      const response = await toast.promise(
+      await toast.promise(
         axios.post(`${apiUrl}/api/store-task`, taskData, {
           headers: {
             Authorization: `Bearer ${decrypt(Cookies.get("token"))}`,
