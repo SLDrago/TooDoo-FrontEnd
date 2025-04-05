@@ -1,6 +1,6 @@
 import { useState } from "react";
 import todologo from "../assets/logo-big.png";
-import dummyprofile from "../assets/145857007_307ce493-b254-4b2d-8ba4-d12c080d6651.svg";
+import dummyprofile from "../assets/dummy-profile-pic.svg";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
