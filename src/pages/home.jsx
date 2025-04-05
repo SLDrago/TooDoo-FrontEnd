@@ -150,33 +150,6 @@ const Home = () => {
             To Do List
           </div>
 
-          {/* <div className="hidden sm:flex p-2 gap-3 justify-end items-center">
-            <button
-              className={`${
-                isPressed ? "btn-press" : ""
-              } flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer`}
-              onClick={() => {
-                handleCSVExport();
-                btnPress();
-              }}
-            >
-              <FileSpreadsheet className="w-5 h-5" />
-              Export CSV
-            </button>
-            <button
-              className={`${
-                isPressed ? "btn-press" : ""
-              } flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer`}
-              onClick={() => {
-                handleExportPDF();
-                btnPress();
-              }}
-            >
-              <Download className="w-5 h-5" />
-              Export PDF
-            </button>
-          </div> */}
-
           <div className="hidden sm:flex p-2 gap-3 justify-end items-center">
             <button
               className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
