@@ -100,7 +100,7 @@ const Card = ({
                   : priority === "medium"
                   ? "bg-yellow-300"
                   : "bg-green-300"
-              } rounded-2xl py-1 px-2 text-sm`}
+              } rounded-2xl py-1 px-2 text-sm capitalize`}
             >
               {priority}
             </div>
