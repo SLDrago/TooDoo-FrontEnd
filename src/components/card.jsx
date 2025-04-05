@@ -152,7 +152,10 @@ const Card = ({
           <div className="text-gray-500">Due Date:</div>
           <div
             className={`${
-              new Date(dueDate) < new Date() + 1 ? "text-red-400" : ""
+              new Date(dueDate).setHours(0, 0, 0, 0) <
+              new Date().setHours(0, 0, 0, 0)
+                ? "text-red-400"
+                : ""
             }`}
           >
             {dueDate}
