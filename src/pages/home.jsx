@@ -16,6 +16,7 @@ import { CSVLink } from "react-csv";
 import { decrypt } from "../utils/cryptoUtils";
 import html2canvas from "html2canvas-pro";
 import { jsPDF } from "jspdf";
+import PDFLayout from "../layouts/pdfLayout";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -32,6 +33,7 @@ const Home = () => {
   const name = Cookies.get("name").split(" ")[0];
   const navigate = useNavigate();
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
 
   const csvLinkRef = useRef(null);
 
@@ -42,34 +44,40 @@ const Home = () => {
   };
 
   const handleExportPDF = () => {
-    const pdf = new jsPDF();
-    const input = document.getElementById("task-list");
+    setPdfExporting(true);
 
-    html2canvas(input, { scale: 2 }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      const imgWidth = 190;
-      const pageHeight = pdf.internal.pageSize.height;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
+    setTimeout(() => {
+      const pdf = new jsPDF();
+      const input = document.getElementById("task-list");
 
-      let position = 10;
+      html2canvas(input, { scale: 2 }).then((canvas) => {
+        const imgData = canvas.toDataURL("image/png");
+        const imgWidth = 190;
+        const pageHeight = pdf.internal.pageSize.height;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
 
-      pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+        let position = 10;
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight + 10;
-        pdf.addPage();
         pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
-      }
 
-      const timestamp = new Date()
-        .toLocaleString()
-        .replace(/[:/]/g, "-")
-        .replace(",", "_");
-      pdf.save(`${name}'s_TooDoo_Export_${timestamp}.pdf`);
-    });
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight + 10;
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        const timestamp = new Date()
+          .toLocaleString()
+          .replace(/[:/]/g, "-")
+          .replace(",", "_");
+        pdf.save(`${name}'s_TooDoo_Export_${timestamp}.pdf`);
+      });
+
+      setPdfExporting(false);
+    }, 5);
   };
 
   const handleTaskChange = () => {
@@ -207,7 +215,7 @@ const Home = () => {
           target="_blank"
           ref={csvLinkRef}
         ></CSVLink>
-        <div id="task-list">
+        <div>
           <div className="hidden items-center justify-center sm:grid grid-cols-3 gap-3 mx-5">
             <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-xl flex items-center justify-center bg-gradient-to-bl from-yellow-500 to-yellow-300">
               Pending Tasks:
@@ -348,7 +356,14 @@ const Home = () => {
               </div>
             </div>
           </div>
-          <div className="mb-4">
+          <div className="mb-4 min-h-dvh">
+            {tasks.length === 0 && (
+              <div className="flex items-center justify-center h-full mt-20">
+                <div className="text-gray-500 text-xl font-semibold">
+                  😩 No tasks available, please add a task.
+                </div>
+              </div>
+            )}
             {activeTab === "todo" ? (
               <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                 {filteredTasks
@@ -396,6 +411,11 @@ const Home = () => {
         </div>
         <div className="m-5 pb-5 flex justify-center items-center font-light text-gray-600">
           2025 All rights reserved.
+        </div>
+        <div className={`${pdfExporting ? "" : "hidden"}`}>
+          <div id="task-list">
+            <PDFLayout tasks={tasks} />
+          </div>
         </div>
       </div>
     </>
