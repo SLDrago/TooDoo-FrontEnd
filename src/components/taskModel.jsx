@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { decrypt } from "../utils/cryptoUtils";
+import ValidateError from "./validateError";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -21,24 +22,47 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
   };
 
   const [taskData, setTaskData] = useState(initialTaskData);
+  const [titleError, setTitleError] = useState("");
+  const [taskError, setTaskError] = useState("");
 
   useEffect(() => {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    const task = tasks.find((task) => task.id === taskId);
-    if (task) {
-      setTaskData({
-        id: task.id,
-        title: task.title,
-        task: task.task,
-        category_id: task.category_id,
-        is_complete: task.is_complete,
-        priority: task.priority,
-        due_date: task.due_date,
-      });
-    } else {
-      setTaskData(initialTaskData);
-    }
-  }, [taskId]);
+    const fetchTask = async () => {
+      try {
+        const response = await axios.get(`${apiUrl}/api/show-task/${taskId}`, {
+          headers: {
+            Authorization: `Bearer ${decrypt(Cookies.get("token"))}`,
+          },
+        });
+        return response.data.task;
+      } catch (error) {
+        console.error("Error fetching task!", error);
+        return null;
+      }
+    };
+
+    const loadTask = async () => {
+      if (taskId) {
+        const task = await fetchTask();
+        if (task) {
+          setTaskData({
+            id: task.id,
+            title: task.title,
+            task: task.task,
+            category_id: task.category_id,
+            is_complete: task.is_complete,
+            priority: task.priority,
+            due_date: task.due_date,
+          });
+        } else {
+          setTaskData(initialTaskData);
+        }
+      } else {
+        setTaskData(initialTaskData);
+      }
+    };
+
+    loadTask();
+  }, [taskId, isOpen]);
 
   const handleClose = () => {
     setTaskData(initialTaskData);
@@ -49,6 +73,10 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
     try {
       if (!taskData.title || !taskData.task || !taskData.category_id) {
         toast.error("Please fill in all required fields.");
+        return;
+      }
+      if (titleError || taskError) {
+        toast.error("Please fix the errors before saving.");
         return;
       }
 
@@ -65,11 +93,6 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
         }
       );
 
-      // const newTask = { ...taskData, id: response.data.task.id };
-      // const latestTasks = JSON.parse(localStorage.getItem("tasks")) || [];
-      // const updatedTasks = [...latestTasks, newTask];
-
-      // localStorage.setItem("tasks", JSON.stringify(updatedTasks));
       if (onTaskChange) {
         onTaskChange();
       }
@@ -100,12 +123,6 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
         }
       );
 
-      // const latestTasks = JSON.parse(localStorage.getItem("tasks")) || [];
-      // const updatedTasks = latestTasks.map((t) =>
-      //   t.id === taskId ? { ...taskData, id: taskId } : t
-      // );
-
-      // localStorage.setItem("tasks", JSON.stringify(updatedTasks));
       if (onTaskChange) {
         onTaskChange();
       }
@@ -140,21 +157,37 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
             value={taskData.title}
             onChange={(e) => {
               setTaskData({ ...taskData, title: e.target.value });
+              setTitleError(
+                e.target.value.length > 30
+                  ? "Recomended text limit is exceeded.."
+                  : ""
+              );
             }}
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-            placeholder="Enter task title"
+            placeholder="Enter task title (Max 30 characters)"
+            maxLength={30}
           />
+          {titleError && <ValidateError error={titleError} />}
         </div>
 
         <div className="mb-4">
           <label className="block text-gray-600 text-sm">Task:</label>
           <textarea
             value={taskData.task}
-            onChange={(e) => setTaskData({ ...taskData, task: e.target.value })}
+            onChange={(e) => {
+              setTaskData({ ...taskData, task: e.target.value });
+              setTaskError(
+                e.target.value.length > 100
+                  ? "Recomended text limit is exceeded.."
+                  : ""
+              );
+            }}
             className="w-full border-gray-300 p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
             rows="4"
-            placeholder="Enter task description"
+            placeholder="Enter task description (Max 100 characters)"
+            maxLength={100}
           ></textarea>
+          {taskError && <ValidateError error={taskError} />}
         </div>
 
         <div className="mb-4">
@@ -205,7 +238,7 @@ const TaskModal = ({ isOpen, onClose, taskId, onTaskChange }) => {
 
         <button
           onClick={taskId ? handleUpdate : handleSave}
-          className="w-full bg-green-500 text-white p-2 rounded-lg hover:bg-green-600"
+          className="w-full bg-blue-400 text-white font-bold p-2 rounded-lg hover:bg-blue-500"
         >
           {taskId ? "Update Task" : "Add Task"}
         </button>
