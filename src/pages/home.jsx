@@ -5,6 +5,7 @@ import {
   Download,
   FileSpreadsheet,
   ChevronDown,
+  SlidersHorizontal,
 } from "lucide-react";
 import Card from "../components/card";
 import TaskModal from "../components/taskModel";
@@ -34,6 +35,8 @@ const Home = () => {
   const navigate = useNavigate();
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const exportMenuRef = useRef(null);
+  const [showFilter, setShowFilter] = useState(false);
 
   const csvLinkRef = useRef(null);
 
@@ -149,18 +152,30 @@ const Home = () => {
     filterTasks();
   }, [tasks, priorityFilter, categoryFilter, searchQuery, filterTasks]);
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (!exportMenuRef.current.contains(e.target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
+  });
+
   return (
     <>
-      <div className="h-dvh bg-zinc-50">
+      <div className="h-dvh">
         <Header />
         <div className="justify-between flex mx-6 my-4">
-          <div className="text-2xl font-bold font-sans flex items-center text-center">
+          <div className="text-xl sm:text-2xl font-bold font-sans flex items-center text-center">
             To Do List
           </div>
 
           <div className="hidden sm:flex p-2 gap-3 justify-end items-center">
             <button
-              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
+              className="flex items-center gap-2 py-1 px-3 border-2 border-blue-400 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded-lg sm:text-sm h-9 cursor-pointer"
               onClick={handleCSVExport}
             >
               <FileSpreadsheet className="w-5 h-5" />
@@ -170,7 +185,7 @@ const Home = () => {
             {"|"}
 
             <button
-              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
+              className="flex items-center gap-2 py-1 px-3 border-2 border-blue-400 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded-lg sm:text-sm h-9 cursor-pointer"
               onClick={handleExportPDF}
             >
               <Download className="w-5 h-5" />
@@ -178,32 +193,31 @@ const Home = () => {
             </button>
           </div>
 
-          <div className="sm:hidden flex">
+          <div className="sm:hidden flex" ref={exportMenuRef}>
             <button
-              className="flex items-center gap-2 py-1 px-3 bg-gray-800 hover:bg-gray-950 text-white rounded-lg sm:text-sm h-9 cursor-pointer"
+              className="flex items-center gap-2 px-3 sm:py-1 border border-blue-400 text-blue-400 font-bold hover:bg-blue-500 hover:text-white rounded-lg text-xs sm:text-sm h-9 cursor-pointer"
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
             >
-              Export <ChevronDown className="w-5 h-5" />
+              Export <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
+            {exportMenuOpen && (
+              <div className="absolute text-sm right-5 mt-10 bg-white shadow-md rounded-md p-2 w-32">
+                <button
+                  className="flex w-full items-center gap-2 p-2 hover:bg-gray-100"
+                  onClick={handleCSVExport}
+                >
+                  <FileSpreadsheet className="w-4 h-4" /> CSV
+                </button>
+
+                <button
+                  className="flex w-full items-center gap-2 p-2 hover:bg-gray-100"
+                  onClick={handleExportPDF}
+                >
+                  <Download className="w-4 h-4" /> PDF
+                </button>
+              </div>
+            )}
           </div>
-
-          {exportMenuOpen && (
-            <div className="absolute right-5 mt-10 bg-white shadow-md rounded-md p-2 w-32">
-              <button
-                className="flex w-full items-center gap-2 p-2 hover:bg-gray-100"
-                onClick={handleCSVExport}
-              >
-                <FileSpreadsheet className="w-5 h-5" /> CSV
-              </button>
-
-              <button
-                className="flex w-full items-center gap-2 p-2 hover:bg-gray-100"
-                onClick={handleExportPDF}
-              >
-                <Download className="w-5 h-5" /> PDF
-              </button>
-            </div>
-          )}
         </div>
         <CSVLink
           data={tasks}
@@ -217,19 +231,19 @@ const Home = () => {
         ></CSVLink>
         <div>
           <div className="hidden items-center justify-center sm:grid grid-cols-3 gap-3 mx-5">
-            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-xl flex items-center justify-center bg-gradient-to-bl from-yellow-500 to-yellow-300">
+            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-gray-800 text-xl flex items-center justify-center bg-blue-100 border border-gray-200">
               Pending Tasks:
               <span className="font-bold font-mono text-2xl ml-3">
                 {tasks.filter((task) => task.is_complete === 0).length}
               </span>
             </div>
-            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-xl flex items-center justify-center bg-gradient-to-bl from-green-500 to-green-300">
+            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-gray-800 text-xl flex items-center justify-center bg-blue-100">
               Completed Tasks:
               <span className="font-bold font-mono text-2xl ml-3">
                 {tasks.filter((task) => task.is_complete === 1).length}
               </span>
             </div>
-            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-xl flex items-center justify-center bg-gradient-to-bl from-red-500 to-red-300">
+            <div className="rounded-xl shadow-md mt-4 mb-4 p-4 font-medium text-gray-800 text-xl flex items-center justify-center bg-blue-100">
               Overdue Tasks:
               <span className="font-bold font-mono text-2xl ml-3">
                 {
@@ -248,11 +262,15 @@ const Home = () => {
               </span>
             </div>
           </div>
-          <div className="bg-white py-4 rounded-lg shadow-md mx-5 my-4">
-            <div className="flex items-center justify-between px-6 gap-4 mb-4">
+          <div className="bg-white py-3 sm:py-4 rounded-lg shadow-md mx-5 my-4 border border-gray-200">
+            <div
+              className={`flex items-center justify-between px-6 gap-4 sm:mb-4 ${
+                showFilter ? "mb-3" : ""
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <button
-                  className={`text-lg p-2 cursor-pointer ${
+                  className={`text-sm sm:text-lg font-bold p-2 cursor-pointer ${
                     activeTab === "todo"
                       ? "text-blue-600 border-b-2 border-blue-600"
                       : "text-gray-500"
@@ -263,7 +281,7 @@ const Home = () => {
                   <span
                     className={`${
                       activeTab === "todo" ? "bg-blue-600" : "bg-gray-500"
-                    } text-white text-sm px-2 py-1 rounded-lg`}
+                    } text-white text-xs sm:text-sm px-2 py-1 rounded-lg`}
                   >
                     {
                       filteredTasks.filter((task) => task.is_complete === 0)
@@ -272,7 +290,7 @@ const Home = () => {
                   </span>
                 </button>
                 <button
-                  className={`text-lg p-2 cursor-pointer ${
+                  className={`text-sm sm:text-lg font-bold p-2 cursor-pointer ${
                     activeTab === "completed"
                       ? "text-blue-600 border-b-2 border-blue-600"
                       : "text-gray-500"
@@ -283,7 +301,7 @@ const Home = () => {
                   <span
                     className={`${
                       activeTab === "completed" ? "bg-blue-600" : "bg-gray-500"
-                    } text-white text-sm px-2 py-1 rounded-lg`}
+                    } text-white text-xs sm:text-sm px-2 py-1 rounded-lg`}
                   >
                     {
                       filteredTasks.filter((task) => task.is_complete === 1)
@@ -293,12 +311,18 @@ const Home = () => {
                 </button>
               </div>
               <button
-                className="flex items-center gap-2 py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-md sm:text-sm h-9 cursor-pointer"
+                className="hidden sm:flex items-center gap-2 py-1 px-3 bg-blue-500 hover:bg-blue-600 text-white rounded-md sm:text-sm h-9 cursor-pointer"
                 onClick={() => setIsModelOpen(true)}
                 data-html2canvas-ignore
               >
                 <Plus className="w-6 h-6 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">New Task</span>
+              </button>
+              <button
+                className="sm:hidden p-2 cursor-pointer"
+                onClick={() => setShowFilter(!showFilter)}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
               </button>
             </div>
             <TaskModal
@@ -307,7 +331,11 @@ const Home = () => {
               onTaskChange={handleTaskChange}
             />
 
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 gap-4">
+            <div
+              className={`${
+                showFilter ? "flex" : "hidden"
+              } sm:flex flex-col sm:flex-row justify-between items-center px-6 gap-4`}
+            >
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto sm:gap-4">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto">
@@ -416,6 +444,14 @@ const Home = () => {
           <div id="task-list">
             <PDFLayout tasks={tasks} />
           </div>
+        </div>
+        <div class="sm:hidden fixed bottom-4 right-4">
+          <button
+            class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-full shadow-lg"
+            onClick={() => setIsModelOpen(true)}
+          >
+            <Plus className="w-8 h-8" />
+          </button>
         </div>
       </div>
     </>
