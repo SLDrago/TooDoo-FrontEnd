@@ -68,7 +68,7 @@ const Login = () => {
           success: "Logged in successfully!",
           error: {
             render({ data }) {
-              return data.response?.data?.message || "Registration failed!";
+              return data.response?.data?.message || "Login failed!";
             },
           },
         }
